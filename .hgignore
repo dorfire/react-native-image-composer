@@ -1,0 +1,14 @@
+syntax: glob
+
+node_modules
+build/
+npm-debug.log
+system-notification.iml
+react-native-system-notification.iml
+.DS_Store
+.idea/
+android/.idea/
+android/.gradle/
+android/gradle/wrapper/
+android/local.properties
+*.iml
