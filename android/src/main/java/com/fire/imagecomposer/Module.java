@@ -11,8 +11,8 @@ import com.facebook.react.bridge.Callback;
 import java.util.Map;
 import java.util.HashMap;
 
-public class Module extends ReactContextBaseJavaModule {
-	public Module(ReactApplicationContext reactContext) {
+class Module extends ReactContextBaseJavaModule {
+	Module(ReactApplicationContext reactContext) {
 		super(reactContext);
 	}
 
