@@ -2,37 +2,34 @@ package com.fire.imagecomposer;
 
 import android.widget.Toast;
 
-import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.Callback;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.HashMap;
 
 public class Module extends ReactContextBaseJavaModule {
+	public Module(ReactApplicationContext reactContext) {
+		super(reactContext);
+	}
 
-  private static final String DURATION_SHORT_KEY = "SHORT";
-  private static final String DURATION_LONG_KEY = "LONG";
+	@Override
+	public String getName() {
+		return "ImageComposer";
+	}
 
-  public Module(ReactApplicationContext reactContext) {
-    super(reactContext);
-  }
+	@Override
+	public Map<String, Object> getConstants() {
+		final Map<String, Object> consts = new HashMap<>();
+		consts.put("BLA_BLA", Toast.LENGTH_LONG);
+		return consts;
+	}
 
-  @Override
-  public String getName() {
-    return "ImageComposer";
-  }
-
-  @Override
-  public Map<String, Object> getConstants() {
-    final Map<String, Object> constants = new HashMap<>();
-    constants.put(DURATION_SHORT_KEY, Toast.LENGTH_SHORT);
-    constants.put(DURATION_LONG_KEY, Toast.LENGTH_LONG);
-    return constants;
-  }
-
-  @ReactMethod
-  public void show(String message, int duration) {
-    Toast.makeText(getReactApplicationContext(), message, duration).show();
-  }
+	@ReactMethod
+	public void compose(String bgImageURI, ReadableMap layers, Callback successCallback, Callback errorCallback) {
+		Toast.makeText(getReactApplicationContext(), bgImageURI, Toast.LENGTH_LONG).show();
+	}
 }
