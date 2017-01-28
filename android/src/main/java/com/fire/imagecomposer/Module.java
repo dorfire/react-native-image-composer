@@ -76,24 +76,19 @@ class Module extends ReactContextBaseJavaModule {
 
 			int layerCount = layers.size();
 			for (int i = 0; i < layerCount; ++i) {
-				ReadableMap layerInfo = layers.getMap(i);
-
-				int layerRID = this.getResourceIdByName(layerInfo.getString("resourceName"));
-				Bitmap layerBitmap = BitmapFactory.decodeResource(this.mAppRes, layerRID);
+				ReadableMap layerInfoMap = layers.getMap(i);
+				LayerInfo layerInfo = new LayerInfo(this.getResourceIdByName(layerInfoMap.getString("resourceName")), layerInfoMap);
+				
+				Bitmap layerBitmap = BitmapFactory.decodeResource(this.mAppRes, layerInfo.resourceId);
 				if (layerBitmap == null) {
-					promise.reject("E_DECODE_LAYER", String.format("Could not load layer bitmap from resource #%d", layerRID));
+					promise.reject("E_DECODE_LAYER", String.format("Could not load layer bitmap from resource #%d", layerInfo.resourceId));
 					return;
 				}
 
 				canvas.save();
-				canvas.rotate((float) layerInfo.getDouble("angle"));
-
-				ReadableMap pos = layerInfo.getMap("position");
-				RectF layerPosition = new RectF((float) pos.getDouble("left"), (float) pos.getDouble("top"),
-												(float) pos.getDouble("right"), (float) pos.getDouble("bottom"));
-
-				layerPaint.setAlpha(layerInfo.hasKey("alpha") ? layerInfo.getInt("alpha") : 0xff);
-				canvas.drawBitmap(layerBitmap, null, layerPosition, layerPaint);
+				canvas.rotate(layerInfo.angle);
+				layerPaint.setAlpha(layerInfo.alpha);
+				canvas.drawBitmap(layerBitmap, null, layerInfo.position, layerPaint);
 				canvas.restore();
 			}
 
