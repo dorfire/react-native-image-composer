@@ -4,6 +4,7 @@ import com.facebook.react.bridge.*;
 import com.facebook.react.common.SystemClock;
 
 import android.content.res.Resources;
+import android.graphics.Paint;
 import android.graphics.RectF;
 import android.net.Uri;
 import android.graphics.Bitmap;
@@ -46,8 +47,9 @@ class Module extends ReactContextBaseJavaModule {
 	private File createTmpImage() throws IOException {
 		String name = "image-" + UUID.randomUUID().toString() + ".jpg";
 		File dir = this.getReactApplicationContext().getExternalCacheDir();
+		dir.mkdirs();
 		File newFile = new File(dir, name);
-		if (!dir.mkdirs() || !newFile.createNewFile())
+		if (!newFile.createNewFile())
 			return null;
 		return newFile;
 	}
@@ -70,6 +72,7 @@ class Module extends ReactContextBaseJavaModule {
 			}
 
 			Canvas canvas = new Canvas(backgroundBitmap);
+			Paint layerPaint = new Paint();
 
 			int layerCount = layers.size();
 			for (int i = 0; i < layerCount; ++i) {
@@ -83,13 +86,14 @@ class Module extends ReactContextBaseJavaModule {
 				}
 
 				canvas.save();
-				canvas.rotate(layerInfo.getInt("angle"));
+				canvas.rotate((float) layerInfo.getDouble("angle"));
 
 				ReadableMap pos = layerInfo.getMap("position");
 				RectF layerPosition = new RectF((float) pos.getDouble("left"), (float) pos.getDouble("top"),
 												(float) pos.getDouble("right"), (float) pos.getDouble("bottom"));
 
-				canvas.drawBitmap(layerBitmap, null, layerPosition, null);
+				layerPaint.setAlpha(layerInfo.hasKey("alpha") ? layerInfo.getInt("alpha") : 0xff);
+				canvas.drawBitmap(layerBitmap, null, layerPosition, layerPaint);
 				canvas.restore();
 			}
 
