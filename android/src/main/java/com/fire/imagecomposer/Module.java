@@ -3,10 +3,12 @@ package com.fire.imagecomposer;
 import com.facebook.react.bridge.*;
 import com.facebook.react.common.SystemClock;
 
+import android.app.Activity;
+import android.media.MediaScannerConnection;
+import android.net.Uri;
+import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Paint;
-import android.graphics.RectF;
-import android.net.Uri;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -14,11 +16,13 @@ import android.graphics.Canvas;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.UUID;
 
 class Module extends ReactContextBaseJavaModule {
+	private final static Bitmap.CompressFormat COMPOSED_IMAGE_COMPRESS_FORMAT = Bitmap.CompressFormat.JPEG;
 	private final static int COMPOSED_IMAGE_COMPRESS_QUALITY = 85;
 	private final static BitmapFactory.Options BG_IMAGE_DECODE_OPTS = new BitmapFactory.Options();
 	static {
@@ -78,7 +82,7 @@ class Module extends ReactContextBaseJavaModule {
 			for (int i = 0; i < layerCount; ++i) {
 				ReadableMap layerInfoMap = layers.getMap(i);
 				LayerInfo layerInfo = new LayerInfo(this.getResourceIdByName(layerInfoMap.getString("resourceName")), layerInfoMap);
-				
+
 				Bitmap layerBitmap = BitmapFactory.decodeResource(this.mAppRes, layerInfo.resourceId);
 				if (layerBitmap == null) {
 					promise.reject("E_DECODE_LAYER", String.format("Could not load layer bitmap from resource #%d", layerInfo.resourceId));
@@ -106,5 +110,31 @@ class Module extends ReactContextBaseJavaModule {
 		} catch (Exception exc) {
 			promise.reject(exc);
 		}
+	}
+
+	@ReactMethod
+	public void share(final String intentTitle, String imageURI) {
+		String imagePath = Uri.parse(imageURI).getPath();
+		final String imageMimeType;
+		switch (COMPOSED_IMAGE_COMPRESS_FORMAT) {
+			case JPEG:	imageMimeType = "image/jpeg";	break;
+			case PNG:	imageMimeType = "image/png";	break;
+			default:	imageMimeType = "*/*";
+		}
+
+		final Activity currentActivity = this.getCurrentActivity();
+
+		MediaScannerConnection.scanFile(this.getReactApplicationContext(), new String[]{imagePath}, new String[]{imageMimeType},
+				new MediaScannerConnection.OnScanCompletedListener() {
+					@Override
+					public void onScanCompleted(String resultPath, Uri resultURI) {
+						Intent shareIntent = new Intent();
+						shareIntent.setAction(Intent.ACTION_SEND);
+						shareIntent.setType(imageMimeType);
+						shareIntent.putExtra(Intent.EXTRA_STREAM, resultURI);
+						currentActivity.startActivity(Intent.createChooser(shareIntent, intentTitle));
+					}
+				}
+		);
 	}
 }
