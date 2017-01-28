@@ -1,22 +1,15 @@
 package com.fire.imagecomposer;
 
+import com.facebook.react.bridge.*;
+import com.facebook.react.common.SystemClock;
+
 import android.content.res.Resources;
+import android.graphics.RectF;
+import android.net.Uri;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.drawable.Drawable;
-import android.net.Uri;
-import android.os.Environment;
-import android.support.annotation.RequiresPermission;
 
-import com.facebook.react.bridge.ReactContextBaseJavaModule;
-import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.ReactMethod;
-import com.facebook.react.bridge.ReadableArray;
-import com.facebook.react.bridge.ReadableMap;
-import com.facebook.react.bridge.Promise;
-
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -31,8 +24,11 @@ class Module extends ReactContextBaseJavaModule {
 		BG_IMAGE_DECODE_OPTS.inMutable = true;
 	}
 
+	private final Resources mAppRes;
+
 	Module(ReactApplicationContext reactContext) {
 		super(reactContext);
+		mAppRes = reactContext.getResources();
 	}
 
 	@Override
@@ -47,47 +43,64 @@ class Module extends ReactContextBaseJavaModule {
 		return consts;
 	}
 
-	private File createNewFile(boolean tmp) throws IOException {
+	private File createTmpImage() throws IOException {
 		String name = "image-" + UUID.randomUUID().toString() + ".jpg";
-		File dir = tmp ? this.getReactApplicationContext().getExternalCacheDir() : Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+		File dir = this.getReactApplicationContext().getExternalCacheDir();
 		File newFile = new File(dir, name);
-		dir.mkdirs();
-		newFile.createNewFile();
+		if (!dir.mkdirs() || !newFile.createNewFile())
+			return null;
 		return newFile;
 	}
 
+	private int getResourceIdByName(String name) {
+		int res = this.mAppRes.getIdentifier(name, "drawable", this.getReactApplicationContext().getPackageName());
+		if (res == 0)
+			throw new Resources.NotFoundException(name);
+		return res;
+	}
+
 	@ReactMethod
-	public void compose(String bgImageURIString, ReadableArray layers, Promise promise) {
+	public void compose(String bgImageURI, ReadableArray layers, Promise promise) {
+		long startTime = SystemClock.currentTimeMillis();
 		try {
-			Bitmap backgroundBitmap = BitmapFactory.decodeFile(Uri.parse(bgImageURIString).getPath(), BG_IMAGE_DECODE_OPTS);
+			Bitmap backgroundBitmap = BitmapFactory.decodeFile(Uri.parse(bgImageURI).getPath(), BG_IMAGE_DECODE_OPTS);
 			if (backgroundBitmap == null) {
-				promise.reject("E_DECODE_BG", String.format("Could not load background image from %s", bgImageURIString));
+				promise.reject("E_DECODE_BG", String.format("Could not load background image from %s", bgImageURI));
 				return;
 			}
 
-			Resources appRes = this.getReactApplicationContext().getResources();
 			Canvas canvas = new Canvas(backgroundBitmap);
 
 			int layerCount = layers.size();
 			for (int i = 0; i < layerCount; ++i) {
 				ReadableMap layerInfo = layers.getMap(i);
-				int layerRID = appRes.getIdentifier(layerInfo.getString("resourceName"), "drawable", this.getReactApplicationContext().getPackageName());
-				Bitmap layerBitmap = BitmapFactory.decodeResource(appRes, layerRID);
+
+				int layerRID = this.getResourceIdByName(layerInfo.getString("resourceName"));
+				Bitmap layerBitmap = BitmapFactory.decodeResource(this.mAppRes, layerRID);
 				if (layerBitmap == null) {
 					promise.reject("E_DECODE_LAYER", String.format("Could not load layer bitmap from resource #%d", layerRID));
 					return;
 				}
 
-				ReadableMap layerPosition = layerInfo.getMap("position");
-				// TODO: use canvas.drawBitmap(bitmap, null, Rect dst, Paint paint) to benefit from the auto-scaling
-				canvas.drawBitmap(layerBitmap, (float) layerPosition.getDouble("x"), (float) layerPosition.getDouble("y"), null);
+				canvas.save();
+				canvas.rotate(layerInfo.getInt("angle"));
+
+				ReadableMap pos = layerInfo.getMap("position");
+				RectF layerPosition = new RectF((float) pos.getDouble("left"), (float) pos.getDouble("top"),
+												(float) pos.getDouble("right"), (float) pos.getDouble("bottom"));
+
+				canvas.drawBitmap(layerBitmap, null, layerPosition, null);
+				canvas.restore();
 			}
 
-			File composedImageFile = createNewFile(true);
+			File composedImageFile = createTmpImage();
 			FileOutputStream composedImageStream = new FileOutputStream(composedImageFile);
 
 			if (backgroundBitmap.compress(Bitmap.CompressFormat.JPEG, COMPOSED_IMAGE_COMPRESS_QUALITY, composedImageStream)) {
-				promise.resolve(Uri.fromFile(composedImageFile).toString());
+				WritableMap resultMap = Arguments.createMap();
+				resultMap.putString("uri", Uri.fromFile(composedImageFile).toString());
+				resultMap.putInt("time", (int) (SystemClock.currentTimeMillis() - startTime));
+				promise.resolve(resultMap);
 			} else {
 				promise.reject("E_COMPRESS_COMPOSED", "Could not compress composed image into output stream");
 			}
