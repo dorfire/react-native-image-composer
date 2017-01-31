@@ -4,14 +4,14 @@ import com.facebook.react.bridge.*;
 import com.facebook.react.common.SystemClock;
 
 import android.app.Activity;
-import android.media.MediaScannerConnection;
-import android.net.Uri;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.media.MediaScannerConnection;
 import android.graphics.Paint;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.net.Uri;
 
 import java.io.File;
 import java.io.FileOutputStream;
