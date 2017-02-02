@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "author": "Dor Fire",
   "private": true,
-  "keywords": ["react-native", "android", "ios", "library"],
+  "keywords": ["react-native", "android", "ios", "graphics", "library"],
   "scripts": {
     "start": "node node_modules/react-native/local-cli/cli.js start",
     "test": "jest"
