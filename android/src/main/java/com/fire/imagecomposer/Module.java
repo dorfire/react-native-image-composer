@@ -96,12 +96,19 @@ class Module extends ReactContextBaseJavaModule {
 			}
 
 			File composedImageFile = createTmpImage();
+			if (composedImageFile == null) {
+				promise.reject("E_CREATE_COMPOSED", "Could not create file for composed image");
+				return;
+			}
 			FileOutputStream composedImageStream = new FileOutputStream(composedImageFile);
 
 			if (backgroundBitmap.compress(Bitmap.CompressFormat.JPEG, COMPOSED_IMAGE_COMPRESS_QUALITY, composedImageStream)) {
 				WritableMap resultMap = Arguments.createMap();
 				resultMap.putString("uri", Uri.fromFile(composedImageFile).toString());
-				resultMap.putInt("time", (int) (SystemClock.currentTimeMillis() - startTime));
+				resultMap.putInt("width",  backgroundBitmap.getWidth());
+				resultMap.putInt("height", backgroundBitmap.getHeight());
+				resultMap.putInt("composeTime", (int) (SystemClock.currentTimeMillis() - startTime));
+
 				promise.resolve(resultMap);
 			} else {
 				promise.reject("E_COMPRESS_COMPOSED", "Could not compress composed image into output stream");
