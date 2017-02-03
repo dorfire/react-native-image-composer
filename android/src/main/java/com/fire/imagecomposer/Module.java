@@ -11,6 +11,7 @@ import android.graphics.Paint;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.net.Uri;
 
 import java.io.File;
@@ -88,11 +89,18 @@ class Module extends ReactContextBaseJavaModule {
 					return;
 				}
 
-				canvas.save();
-				canvas.rotate(layerInfo.angle);
+				// TODO: change following block to layerInfo.draw(canvas)
+				Matrix rotator = new Matrix();
+				rotator.postRotate(layerInfo.angle, layerInfo.origin.x, layerInfo.origin.y); // coordinates in bitmap space
+				rotator.postTranslate(layerInfo.position.left, layerInfo.position.top); // coordinates in canvas space
+				rotator.postScale(
+						layerInfo.position.width() / layerBitmap.getWidth(),
+						layerInfo.position.height() / layerBitmap.getHeight(),
+						layerInfo.position.left,
+						layerInfo.position.top
+				);
 				layerPaint.setAlpha(layerInfo.alpha);
-				canvas.drawBitmap(layerBitmap, null, layerInfo.position, layerPaint);
-				canvas.restore();
+				canvas.drawBitmap(layerBitmap, rotator, layerPaint);
 			}
 
 			File composedImageFile = createTmpImage();
