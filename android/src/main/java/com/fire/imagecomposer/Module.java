@@ -23,11 +23,7 @@ import java.util.UUID;
 
 class Module extends ReactContextBaseJavaModule {
 	private final static Bitmap.CompressFormat COMPOSED_IMAGE_COMPRESS_FORMAT = Bitmap.CompressFormat.JPEG;
-	private final static int COMPOSED_IMAGE_COMPRESS_QUALITY = 85;
-	private final static BitmapFactory.Options BG_IMAGE_DECODE_OPTS = new BitmapFactory.Options();
-	static {
-		BG_IMAGE_DECODE_OPTS.inMutable = true;
-	}
+	private final static int COMPOSED_IMAGE_COMPRESS_QUALITY = 90;
 
 	private final Resources mAppRes;
 
@@ -66,12 +62,15 @@ class Module extends ReactContextBaseJavaModule {
 	}
 
 	@ReactMethod
-	public void compose(String bgImageURI, ReadableArray layers, Promise promise) {
+	public void compose(String bgImagePath, ReadableArray layers, Promise promise) {
 		long startTime = SystemClock.currentTimeMillis();
 		try {
-			Bitmap backgroundBitmap = BitmapFactory.decodeFile(Uri.parse(bgImageURI).getPath(), BG_IMAGE_DECODE_OPTS);
+			BitmapFactory.Options backgroundOpts = new BitmapFactory.Options();
+			backgroundOpts.inMutable = true;
+
+			Bitmap backgroundBitmap = BitmapFactory.decodeFile(bgImagePath, backgroundOpts);
 			if (backgroundBitmap == null) {
-				promise.reject("E_DECODE_BG", String.format("Could not load background image from %s", bgImageURI));
+				promise.reject("E_DECODE_BG", String.format("Could not load background image from %s", bgImagePath));
 				return;
 			}
 
@@ -89,7 +88,7 @@ class Module extends ReactContextBaseJavaModule {
 					return;
 				}
 
-				// TODO: change following block to layerInfo.draw(canvas)
+				// TODO: refactor following block to layerInfo.draw(canvas)
 				Matrix rotator = new Matrix();
 				rotator.postRotate(layerInfo.angle, layerInfo.origin.x, layerInfo.origin.y); // coordinates in bitmap space
 				rotator.postTranslate(layerInfo.position.left, layerInfo.position.top); // coordinates in canvas space
@@ -101,6 +100,7 @@ class Module extends ReactContextBaseJavaModule {
 				);
 				layerPaint.setAlpha(layerInfo.alpha);
 				canvas.drawBitmap(layerBitmap, rotator, layerPaint);
+				layerBitmap.recycle(); // is this causing performance issues?
 			}
 
 			File composedImageFile = createTmpImage();
@@ -112,15 +112,15 @@ class Module extends ReactContextBaseJavaModule {
 
 			if (backgroundBitmap.compress(Bitmap.CompressFormat.JPEG, COMPOSED_IMAGE_COMPRESS_QUALITY, composedImageStream)) {
 				WritableMap resultMap = Arguments.createMap();
+
 				resultMap.putString("uri", Uri.fromFile(composedImageFile).toString());
-				resultMap.putInt("width",  backgroundBitmap.getWidth());
-				resultMap.putInt("height", backgroundBitmap.getHeight());
+				resultMap.putInt("width", backgroundOpts.outWidth);
+				resultMap.putInt("height", backgroundOpts.outHeight);
 				resultMap.putInt("composeTime", (int) (SystemClock.currentTimeMillis() - startTime));
 
+				backgroundBitmap.recycle(); // is this causing performance issues?
 				promise.resolve(resultMap);
-			} else {
-				promise.reject("E_COMPRESS_COMPOSED", "Could not compress composed image into output stream");
-			}
+			} else promise.reject("E_COMPRESS_COMPOSED", "Could not compress composed image into output stream");
 		} catch (Exception exc) {
 			promise.reject(exc);
 		}
